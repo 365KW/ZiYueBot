@@ -71,7 +71,8 @@ public class Draw : Command
         Logger.Info($"调用者：{context.UserName} ({context.UserId})，参数：{arg.Flatten()}");
         _ = UpdateInvokeRecords(context.UserId);
 
-        await context.SendMessage($"您的提示词评分为：{await JudgePrompt(arg.ToString(context))}/100");
+        int rank = await JudgePrompt(arg.ToString(context));
+        await context.SendMessage($"您的提示词评分为：{rank}/100" + (rank < 60 ? "。你有使用 chat 优化吗？" : ""));
 
         try
         {
