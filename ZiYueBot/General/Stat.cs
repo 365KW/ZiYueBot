@@ -152,16 +152,6 @@ public class Stat : Command
 
     public override TimeSpan GetRateLimit(Context context)
     {
-        using MySqlConnection connection = ZiYueBot.Instance.ConnectDatabase();
-        using MySqlCommand command = new MySqlCommand(
-            $"SELECT * FROM sponsors WHERE userid = {context.UserId} LIMIT 1",
-            connection);
-        using MySqlDataReader reader = command.ExecuteReader();
-        if (reader.Read() && DateTime.Today <= reader.GetDateTime("expiry"))
-        {
-            return TimeSpan.FromMinutes(1);
-        }
-
-        return TimeSpan.FromMinutes(5);
+        return context.IsSponsor ? TimeSpan.FromMinutes(1) : TimeSpan.FromMinutes(5);
     }
 }

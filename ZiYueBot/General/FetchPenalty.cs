@@ -31,7 +31,7 @@ public class FetchPenalty : Command
 
         if (!this.TryPassRateLimit(context))
         {
-            await context.SendMessage("频率已达限制（10 分钟 1 条）");
+            await context.SendMessage("频率已达限制（10 分钟 1 条；赞助者 5 分钟 1 条）");
             return;
         }
 
@@ -82,6 +82,6 @@ public class FetchPenalty : Command
 
     public override TimeSpan GetRateLimit(Context context)
     {
-        return TimeSpan.FromMinutes(10);
+        return context.IsSponsor ? TimeSpan.FromMinutes(5) : TimeSpan.FromMinutes(10);
     }
 }

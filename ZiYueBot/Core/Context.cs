@@ -1,3 +1,5 @@
+using MySql.Data.MySqlClient;
+
 namespace ZiYueBot.Core;
 
 /// <summary>
@@ -7,6 +9,7 @@ public enum Platform
 {
     QQ,
     Discord,
+
     /// <summary>
     /// 管理类命令。与一般的命令不同，它不能在 /help 显示，并且全平台通用。
     /// </summary>
@@ -31,10 +34,23 @@ public abstract class Context
     public abstract EventType EventType { get; }
     public abstract string UserName { get; }
     public abstract ulong UserId { get; }
+
     /// <summary>
     /// 是否拥有群聊/频道的管理权限。在 QQ 为管理员，在 Discord 则为“踢除、批准和拒绝成员”权限。
     /// </summary>
     public abstract bool HasChannelAdmin { get; }
+
+    public bool IsSponsor
+    {
+        get
+        {
+            using MySqlConnection connection = ZiYueBot.Instance.ConnectDatabase();
+            using MySqlCommand command =
+                new MySqlCommand($"SELECT * FROM sponsors WHERE userid = {UserId} LIMIT 1", connection);
+            using MySqlDataReader reader = command.ExecuteReader();
+            return reader.Read() && DateTime.Today <= reader.GetDateTime("expiry");
+        }
+    }
 
     public abstract Task SendMessage(MessageChain messageChain);
 
