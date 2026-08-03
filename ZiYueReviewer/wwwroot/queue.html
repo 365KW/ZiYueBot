@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>漂流瓶审核队列 - 子悦机器</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; background: #f5f6fa; color: #2d3436; }
+  header { display: flex; align-items: baseline; gap: 10px; padding: 14px 20px; background: #fff; border-bottom: 1px solid #e1e4e8; }
+  .title { font-weight: 700; font-size: 18px; }
+  .sub { color: #636e72; font-size: 13px; }
+  main { padding: 20px; max-width: 960px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+  section { background: #fff; border: 1px solid #e1e4e8; border-radius: 8px; overflow: hidden; }
+  h2 { font-size: 15px; padding: 12px 16px; border-bottom: 1px solid #e1e4e8; background: #fafbfc; }
+  .tip { color: #7f8c8d; font-size: 13px; padding: 10px 16px; border-bottom: 1px dashed #eceef0; line-height: 1.7; }
+  .tip:last-child { border-bottom: none; }
+
+  .progress-wrap { padding: 16px; }
+  .progress-bar { display: flex; height: 22px; border-radius: 6px; overflow: hidden; background: #eef0f2; }
+  .progress-bar .p { width: 0; transition: width .4s ease; }
+  .p-approved { background: #27ae60; }
+  .p-pending { background: #f1c40f; }
+  .p-rejected { background: #e74c3c; }
+  .p-transferred { background: #8e44ad; }
+  .progress-info { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; font-size: 13px; color: #4a5054; }
+  .progress-info b { font-weight: 600; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: 0; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid #f0f1f3; vertical-align: top; }
+  th { color: #636e72; font-weight: 600; white-space: nowrap; }
+  td.id, td.time { white-space: nowrap; font-size: 13px; color: #4a5054; }
+  .seg { margin: 2px 0; }
+  .seg-text { white-space: pre-wrap; word-break: break-all; }
+  .seg-img img { max-width: 260px; max-height: 160px; border-radius: 4px; display: block; }
+  .seg-fallback { color: #95a5a6; font-size: 12px; }
+  .empty { color: #95a5a6; text-align: center; padding: 40px; }
+
+  .status { display: inline-block; padding: 2px 10px; border-radius: 4px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .status-pending { background: #fef9e7; color: #9a7d0a; }
+  .status-approved { background: #eafaf1; color: #1e8449; }
+  .status-rejected { background: #fdedec; color: #c0392b; }
+  .status-transferred { background: #f4ecf7; color: #6c3483; }
+  .assigned { white-space: nowrap; font-size: 13px; }
+
+  .remark-icon { display: inline-block; width: 20px; height: 20px; margin-left: 8px; cursor: pointer; vertical-align: middle; }
+  .remark-icon:hover svg path { fill: #1890ff; }
+  .remark-tooltip { position: absolute; background-color: #333; color: white; padding: 8px 12px; border-radius: 4px;
+    font-size: 14px; max-width: 300px; word-wrap: break-word; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.15); display: none; }
+  .remark-tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; margin-left: -5px;
+    border-width: 5px; border-style: solid; border-color: #333 transparent transparent transparent; }
+</style>
+</head>
+<body>
+<header>
+  <span class="title">漂流瓶审核队列</span>
+  <span class="sub" id="sub">加载中…</span>
+</header>
+<main>
+  <section>
+    <h2>漂流瓶审核队列</h2>
+    <div class="tip">云瓶被驳回请勿重新申请，请阅读《云瓶生态建设条例》。如有审核意见（内容右侧的评论图标），请仔细阅读并根据意见修改。</div>
+    <div class="tip">网页只显示近六个月内提交的审核记录。</div>
+    <div class="progress-wrap">
+      <div class="progress-bar" id="bar">
+        <div class="p p-approved" id="pb-approved"></div>
+        <div class="p p-pending" id="pb-pending"></div>
+        <div class="p p-rejected" id="pb-rejected"></div>
+        <div class="p p-transferred" id="pb-transferred"></div>
+      </div>
+      <div class="progress-info" id="pinfo"></div>
+    </div>
+    <table>
+      <thead><tr><th>编号</th><th>日期</th><th>内容</th><th>被分配编号</th><th>审核结果</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </section>
+</main>
+
+<div id="remarkTooltip" class="remark-tooltip"></div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const id = params.get("id");
+
+const STATUS_TEXT = {
+  pending: "待审",
+  approved: "通过",
+  rejected: "驳回",
+  transferred: "移交",
+};
+const STATUS_TIP = {
+  pending: "云瓶正在等待管理员审核，通过后将被打捞到大海中。",
+  approved: "云瓶审核通过，已被放归大海。",
+  rejected: "云瓶审核未通过，若有审核意见请按意见修改，勿重复提交原样内容。",
+  transferred: "云瓶已移交至海峡云瓶系统。",
+};
+
+function segHtml(seg) {
+  if (!seg.isImage) return `<div class="seg seg-text">${escapeHtml(seg.text)}</div>`;
+  if (seg.imageKind === 0) {
+    return `<div class="seg seg-img"><img loading="lazy" src="${escapeAttr(seg.text)}" onerror="this.outerHTML='<div class=seg-fallback>图片加载失败</div>'"></div>`;
+  }
+  if (seg.imageKind === 1) {
+    return `<div class="seg seg-img"><img loading="lazy" src="/api/file?path=${encodeURIComponent(seg.text)}" onerror="this.outerHTML='<div class=seg-fallback>图片加载失败</div>'"></div>`;
+  }
+  return `<div class="seg seg-img"><img src="data:image/png;base64,${seg.text}"></div>`;
+}
+
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function escapeAttr(s) { return escapeHtml(s).replace(/`/g, "&#96;"); }
+
+function fmtTime(t) { return String(t).replace("T", " ").slice(0, 16); }
+
+const REMARK_ICON_SVG = `<svg viewBox="0 0 1035 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path d="M905.898667 44.032 129.365333 44.032c-71.338667 0-129.365333 58.026667-129.365333 129.365333l0 518.144c0 71.338667 58.026667 129.365333 129.365333 129.365333l253.952 0 134.144 163.84 133.802667-163.84 254.293333 0c71.338667 0 129.365333-58.026667 129.365333-129.365333L1034.922667 173.397333C1035.264 102.058667 977.237333 44.032 905.898667 44.032L905.898667 44.032 905.898667 44.032zM236.885333 498.005333c-34.474667 0-62.464-27.989333-62.464-62.464 0-34.474667 27.989333-62.464 62.464-62.464 34.474667 0 62.464 27.989333 62.464 62.464C299.349333 470.016 271.36 498.005333 236.885333 498.005333L236.885333 498.005333 236.885333 498.005333zM518.144 498.005333c-34.474667 0-62.464-27.989333-62.464-62.464 0-34.474667 27.989333-62.464 62.464-62.464 34.474667 0 62.464 27.989333 62.464 62.464C580.608 470.016 552.618667 498.005333 518.144 498.005333L518.144 498.005333zM799.402667 498.005333c-34.474667 0-62.464-27.989333-62.464-62.464 0-34.474667 27.989333-62.464 62.464-62.464 34.474667 0 62.464 27.989333 62.464 62.464C861.866667 470.016 833.877333 498.005333 799.402667 498.005333L799.402667 498.005333zM799.402667 498.005333" fill="#272636"></path></svg>`;
+
+function remarkIconHtml(remark) {
+  if (!remark) return "";
+  return `<span class="remark-icon" data-remark="${escapeAttr(remark)}">${REMARK_ICON_SVG}</span>`;
+}
+
+async function load() {
+  const sub = document.getElementById("sub");
+  const rows = document.getElementById("rows");
+  const bar = document.getElementById("bar");
+  const pinfo = document.getElementById("pinfo");
+  if (!id) {
+    sub.textContent = "缺少 id 参数";
+    rows.innerHTML = `<tr><td colspan="5" class="empty">请通过正确的链接访问本页面</td></tr>`;
+    return;
+  }
+  sub.textContent = `用户 ID：${id}`;
+  try {
+    const data = await fetch(`/api/queue?id=${encodeURIComponent(id)}`).then(r => r.json());
+    const t = data.today;
+    const total = t.total || 0;
+    const setBar = (name, count) => document.getElementById("pb-" + name).style.width =
+      (total ? Math.round(count * 100 / total) : 0) + "%";
+    setBar("approved", t.approved);
+    setBar("pending", t.pending);
+    setBar("rejected", t.rejected);
+    setBar("transferred", t.transferred);
+    pinfo.innerHTML =
+      `<span><span class="dot" style="background:#27ae60"></span><b>${t.approved}</b> 通过</span>` +
+      `<span><span class="dot" style="background:#f1c40f"></span><b>${t.pending}</b> 待审</span>` +
+      `<span><span class="dot" style="background:#e74c3c"></span><b>${t.rejected}</b> 驳回</span>` +
+      `<span><span class="dot" style="background:#8e44ad"></span><b>${t.transferred}</b> 移交</span>` +
+      `<span>今日总计：<b>${total}</b></span>`;
+
+    const records = data.records || [];
+    if (records.length === 0) {
+      rows.innerHTML = `<tr><td colspan="5" class="empty">近六个月内暂无提交记录</td></tr>`;
+      return;
+    }
+    rows.innerHTML = records.map(r => `
+      <tr>
+        <td class="id">${r.queueId}</td>
+        <td class="time">${fmtTime(r.created)}</td>
+        <td>${r.segments.map(segHtml).join("")}${remarkIconHtml(r.remark)}</td>
+        <td class="assigned">${r.assignedId ? (r.assignedId === "海峡云瓶" ? "海峡云瓶" : "#" + r.assignedId) : "—"}</td>
+        <td><span class="status status-${r.status}" title="${escapeAttr(STATUS_TIP[r.status] || "")}">${STATUS_TEXT[r.status] || r.status}</span></td>
+      </tr>`).join("");
+  } catch (e) {
+    rows.innerHTML = `<tr><td colspan="5" class="empty">加载失败：${escapeHtml(e.message)}</td></tr>`;
+  }
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  const tooltip = document.getElementById("remarkTooltip");
+  document.querySelector("main").addEventListener("mouseover", function (e) {
+    const icon = e.target.closest(".remark-icon");
+    if (icon) {
+      const remark = icon.getAttribute("data-remark");
+      if (remark) {
+        tooltip.textContent = remark;
+        tooltip.style.display = "block";
+        const rect = icon.getBoundingClientRect();
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+        const tw = tooltip.offsetWidth;
+        const th = tooltip.offsetHeight;
+        tooltip.style.top = (rect.top + scrollTop - th - 10) + "px";
+        tooltip.style.left = (rect.left + scrollLeft + rect.width / 2 - tw / 2) + "px";
+      }
+    }
+  });
+  document.querySelector("main").addEventListener("mouseout", function (e) {
+    if (e.target.closest(".remark-icon")) tooltip.style.display = "none";
+  });
+});
+load();
+</script>
+</body>
+</html>

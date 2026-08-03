@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>子悦云瓶审核</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; background: #f5f6fa; color: #2d3436; }
+  header { display: flex; align-items: center; gap: 10px; padding: 12px 20px; background: #fff; border-bottom: 1px solid #e1e4e8; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; background: #e74c3c; }
+  .dot.ok { background: #27ae60; }
+  .title { font-weight: 700; font-size: 18px; }
+  #status { color: #636e72; font-size: 13px; }
+  main { padding: 16px 20px; display: flex; flex-direction: column; gap: 16px; }
+  section { background: #fff; border: 1px solid #e1e4e8; border-radius: 8px; overflow: hidden; }
+  h2 { font-size: 15px; padding: 10px 16px; border-bottom: 1px solid #e1e4e8; background: #fafbfc; }
+  .scroll { max-height: 40vh; overflow: auto; }
+  .scroll.tall { max-height: 60vh; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #f0f1f3; vertical-align: top; }
+  th { position: sticky; top: 0; background: #fafbfc; color: #636e72; font-weight: 600; white-space: nowrap; }
+  td.id, td.uid, td.time, td.views { white-space: nowrap; }
+  .seg { margin: 2px 0; }
+  .seg-text { white-space: pre-wrap; word-break: break-all; }
+  .seg-img img { max-width: 260px; max-height: 160px; border-radius: 4px; display: block; }
+  .seg-fallback { color: #95a5a6; font-size: 12px; }
+  .empty { color: #95a5a6; text-align: center; padding: 24px; }
+  .ops { display: flex; gap: 6px; align-items: center; white-space: nowrap; }
+  .ops input { width: 140px; padding: 5px 8px; border: 1px solid #dcdde1; border-radius: 4px; font-size: 12px; }
+  .btn { border: none; border-radius: 4px; color: #fff; padding: 6px 14px; font-size: 12px; cursor: pointer; }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-approve { background: #27ae60; }
+  .btn-approve:hover:not(:disabled) { background: #229954; }
+  .btn-reject { background: #e74c3c; }
+  .btn-reject:hover:not(:disabled) { background: #c0392b; }
+  .btn-transfer { background: #8e44ad; }
+  .btn-transfer:hover:not(:disabled) { background: #7d3c98; }
+  .msg { font-size: 11px; color: #27ae60; }
+  .assigned { white-space: nowrap; }
+  .status { display: inline-block; padding: 2px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .status-pending { background: #fef9e7; color: #9a7d0a; }
+  .status-approved { background: #eafaf1; color: #1e8449; }
+  .status-rejected { background: #fdedec; color: #c0392b; }
+  .status-transferred { background: #f4ecf7; color: #6c3483; }
+</style>
+</head>
+<body>
+<header>
+  <div class="dot" id="dot"></div>
+  <span class="title">子悦云瓶审核</span>
+  <span id="status">连接中…</span>
+</header>
+<main>
+  <section>
+    <h2 id="h-pending">待审云瓶</h2>
+    <div class="scroll"><table id="t-pending"><thead>
+      <tr><th>编号</th><th>用户名</th><th>用户 ID</th><th>提交时间</th><th>内容</th><th>操作</th></tr>
+    </thead><tbody></tbody></table></div>
+  </section>
+  <section>
+    <h2 id="h-published">已发布云瓶</h2>
+    <div class="scroll"><table id="t-published"><thead>
+      <tr><th>编号</th><th>用户名</th><th>用户 ID</th><th>提交时间</th><th>浏览</th><th>内容</th></tr>
+    </thead><tbody></tbody></table></div>
+  </section>
+  <section>
+    <h2 id="h-records">审核记录</h2>
+    <div class="scroll tall"><table id="t-records"><thead>
+      <tr><th>编号</th><th>用户名</th><th>用户 ID</th><th>日期</th><th>内容</th><th>被分配编号</th><th>审核结果</th></tr>
+    </thead><tbody></tbody></table></div>
+  </section>
+</main>
+
+<script>
+const REFRESH_MS = 5000;
+let lastError = null;
+
+function segHtml(seg) {
+  if (!seg.isImage) {
+    return `<div class="seg seg-text">${escapeHtml(seg.text)}</div>`;
+  }
+  if (seg.imageKind === 0) { // Remote
+    return `<div class="seg seg-img"><img loading="lazy" src="${escapeAttr(seg.text)}" onerror="this.outerHTML='<div class=seg-fallback>图片加载失败：${escapeAttr(seg.text)}</div>'"></div>`;
+  }
+  if (seg.imageKind === 1) { // Local
+    return `<div class="seg seg-img"><img loading="lazy" src="/api/file?path=${encodeURIComponent(seg.text)}" onerror="this.outerHTML='<div class=seg-fallback>图片加载失败：${escapeAttr(seg.text)}</div>'"></div>`;
+  }
+  // Base64
+  return `<div class="seg seg-img"><img src="data:image/png;base64,${seg.text}"></div>`;
+}
+
+function render(table, items) {
+  const tbody = table.tBodies[0];
+  tbody.innerHTML = "";
+  if (items.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="10" class="empty">暂无数据</td></tr>`;
+    return;
+  }
+  const hasViews = table.id === "t-published";
+  const isPending = table.id === "t-pending";
+  const isRecords = table.id === "t-records";
+  for (const item of items) {
+    const tr = document.createElement("tr");
+    const idText = isRecords ? item.queueId : item.id;
+    const cells = [
+      `<td class="id">${idText}</td>`,
+      `<td>${escapeHtml(item.username)}</td>`,
+      `<td class="uid">${item.userId}</td>`,
+      `<td class="time">${item.created}</td>`,
+    ];
+    if (hasViews) cells.push(`<td class="views">${item.views}</td>`);
+    cells.push(`<td>${item.segments.map(segHtml).join("")}</td>`);
+    if (isPending) {
+      cells.push(`<td><div class="ops">
+        <input type="text" class="remark-input" placeholder="云瓶建议（审核意见）" title="作为审核意见展示在云瓶队列页面">
+        <button class="btn btn-approve" onclick="review(${item.id}, 0, this)">通过</button>
+        <button class="btn btn-reject" onclick="review(${item.id}, 1, this)">驳回</button>
+        <button class="btn btn-transfer" onclick="review(${item.id}, 2, this)">移交</button>
+        <span class="msg"></span>
+      </div></td>`);
+    }
+    if (isRecords) {
+      cells.push(`<td class="assigned">${item.assignedId ? (item.assignedId === "海峡云瓶" ? "海峡云瓶" : "#" + item.assignedId) : "—"}</td>`);
+      const st = item.status;
+      const text = { pending: "待审", approved: "通过", rejected: "驳回", transferred: "移交" }[st] || st;
+      cells.push(`<td><span class="status status-${st}">${text}</span></td>`);
+    }
+    tr.innerHTML = cells.join("");
+    tbody.appendChild(tr);
+  }
+}
+
+async function review(queueId, action, btn) {
+  btn.disabled = true;
+  const row = btn.closest("tr");
+  const msg = row.querySelector(".msg");
+  const remark = (row.querySelector(".remark-input")?.value || "").trim() || null;
+  try {
+    const resp = await fetch("/api/review", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ queueId, action, remark }),
+    });
+    if (!resp.ok) throw new Error(await resp.text());
+    msg.textContent = "✓ 已处理";
+    row.style.opacity = "0.4";
+    setTimeout(refresh, 800);
+  } catch (e) {
+    msg.textContent = "失败：" + e.message;
+    msg.style.color = "#e74c3c";
+    btn.disabled = false;
+  }
+}
+
+async function refresh() {
+  const dot = document.getElementById("dot");
+  const status = document.getElementById("status");
+  try {
+    const [pending, published, records] = await Promise.all([
+      fetch("/api/pending").then(r => r.json()),
+      fetch("/api/published").then(r => r.json()),
+      fetch("/api/review-records").then(r => r.json()),
+    ]);
+    dot.className = "dot ok";
+    const now = new Date().toLocaleTimeString("zh-CN");
+    document.getElementById("h-pending").textContent = `待审云瓶（${pending.length}）`;
+    document.getElementById("h-published").textContent = `已发布云瓶（${published.length}）`;
+    document.getElementById("h-records").textContent = `审核记录（${records.length}）`;
+    const active = document.activeElement;
+    if (active && active.classList && active.classList.contains("remark-input")) {
+      status.textContent = `已连接 · 输入中，暂停刷新 · 更新于 ${now}`;
+      return;
+    }
+    status.textContent = `已连接 · 待审 ${pending.length} 条 · 已发布 ${published.length} 条 · 更新于 ${now}`;
+    render(document.getElementById("t-pending"), pending);
+    render(document.getElementById("t-published"), published);
+    render(document.getElementById("t-records"), records);
+  } catch (e) {
+    dot.className = "dot";
+    status.textContent = `刷新失败：${e.message}`;
+  }
+}
+
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function escapeAttr(s) {
+  return escapeHtml(s).replace(/`/g, "&#96;");
+}
+
+refresh();
+setInterval(refresh, REFRESH_MS);
+</script>
+</body>
+</html>

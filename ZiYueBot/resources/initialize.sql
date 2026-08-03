@@ -151,7 +151,8 @@ CREATE TABLE IF NOT EXISTS driftbottles_queue
     username tinytext null,
     created  datetime null,
     content  text     null,
-    reviewed tinyint(1) default 0
+    reviewed tinyint(1) default 0,
+    remark   text     null
 ) CHARSET = utf8mb4;
 
 # 云瓶星标

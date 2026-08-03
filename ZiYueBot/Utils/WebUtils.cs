@@ -60,12 +60,20 @@ public static class WebUtils
         };
     }
 
-    public static string UploadToS3(ImageMessageEntity image)
+    /// <summary>
+    /// 将图片存储为数据库友好格式。开启对象存储时返回远程图片段，否则返回本地图片路径段。
+    /// </summary>
+    public static string StoreImage(ImageMessageEntity image)
     {
-        using Stream stream = image.GetStreamAsync().GetAwaiter().GetResult();
-        using SKData? data = SKData.Create(stream);
+        return ZiYueBot.Instance.Config.AssetsUploadEnabled ?? true
+            ? $"\uE000{UploadToS3(image)}\uE001"
+            : $"\u2408{SaveLocalImage(image)}\u2409";
+    }
+
+    private static string GetImageType(SKData data)
+    {
         using SKCodec? codec = SKCodec.Create(data);
-        string type = codec.EncodedFormat switch
+        return codec.EncodedFormat switch
         {
             SKEncodedImageFormat.Bmp => "bmp",
             SKEncodedImageFormat.Gif => "gif",
@@ -83,6 +91,28 @@ public static class WebUtils
             SKEncodedImageFormat.Jpegxl => "jpegxl",
             _ => "bin"
         };
+    }
+
+    /// <summary>
+    /// 将图片保存到本地 data/images 缓存目录，返回相对工作目录的路径。
+    /// </summary>
+    private static string SaveLocalImage(ImageMessageEntity image)
+    {
+        using Stream stream = image.GetStreamAsync().GetAwaiter().GetResult();
+        using SKData data = SKData.Create(stream);
+        string dir = $"data/images/{DateTime.Today:yyyy-MM}";
+        Directory.CreateDirectory(dir);
+        string key = $"{dir}/{Guid.NewGuid()}.{GetImageType(data)}";
+        File.WriteAllBytes(key, data.ToArray());
+        Logger.Info($"本地缓存文件保存：{key}");
+        return key;
+    }
+
+    public static string UploadToS3(ImageMessageEntity image)
+    {
+        using Stream stream = image.GetStreamAsync().GetAwaiter().GetResult();
+        using SKData? data = SKData.Create(stream);
+        string type = GetImageType(data);
 
         string key = $"images/{DateTime.Today:yyyy-MM}/{Guid.NewGuid()}.{type}";
         Logger.Info($"对象存储文件上传：{key}");
