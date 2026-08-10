@@ -109,10 +109,8 @@ public class Stat : Command
                 double shootingSelfDeath = reader.GetInt32("shooting_self_death");
                 if (shootingOtherCount + shootingSelfCount > 0)
                 {
-                    revolverStat =
-                        $"您在 {reader.GetDateTime("first_invoke"):yyyy年MM月dd日} 第一次调用俄罗斯轮盘命令，开始过 {reader.GetInt32("start_count")} 局轮盘，转轮 {reader.GetInt32("rotating_count")} 次，重置 {reader.GetInt32("restart_count")} 次。";
                     revolverStat +=
-                        $"您向别人开过 {shootingOtherCount} 枪，其中打死过 {shootingOtherDeath} 次。您向自己开过 {shootingSelfCount} 次枪，其中打死过 {shootingSelfDeath} 次。总射击准度 {((shootingOtherDeath + shootingSelfDeath) / (shootingOtherCount + shootingSelfCount) * 100):F4}%。";
+                        $"您在俄罗斯轮盘命令中，向别人开过 {shootingOtherCount} 枪，其中打死过 {shootingOtherDeath} 次。您向自己开过 {shootingSelfCount} 次枪，其中打死过 {shootingSelfDeath} 次。总射击准度 {((shootingOtherDeath + shootingSelfDeath) / (shootingOtherCount + shootingSelfCount) * 100):F4}%。";
                 }
             }
         }
@@ -136,6 +134,20 @@ public class Stat : Command
             }
         }
 
+        // 记过
+        string? penalty = null;
+        await using (MySqlCommand query = new MySqlCommand(
+                         $"SELECT (SELECT COUNT(*) FROM penalty WHERE userid = {context.UserId} AND removed = false) AS penalties",
+                         ZiYueBot.Instance.ConnectDatabase()))
+        {
+            await using MySqlDataReader reader = query.ExecuteReader();
+            if (reader.Read())
+            {
+                int count = reader.GetInt32("penalties");
+                if (count > 0) penalty = $"您共有 {count} 条全局记过，详情请查看网页版统计数据。";
+            }
+        }
+
         await context.SendMessage($"""
                                    {context.UserName} 的统计数据
                                    平台：{(context.Platform == Platform.Discord ? "Discord" : "QQ")}
@@ -144,6 +156,7 @@ public class Stat : Command
                                    {driftbottlesStat ?? "云瓶统计失败，请联系子悦。"}
                                    {driftbottlesIncrementalStat ?? "云瓶增长统计失败，请联系子悦。"}
                                    {revolverStat ?? "您没有调用过俄罗斯轮盘命令。"}
+                                   {penalty ?? "您没有全局记过。"}
                                    {blacklists ?? "您没有被列入黑名单的命令。"}
 
                                    完整版统计数据另见：https://www.ziyuebot.cn/stat.html?id={context.UserId}
