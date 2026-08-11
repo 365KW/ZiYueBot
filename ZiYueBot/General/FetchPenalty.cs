@@ -57,26 +57,42 @@ public class FetchPenalty : Command
         penalty = penalty[..^1];
 
         int publicPenaltyCount = 0;
-        string publicPenalty = "\n";
+
         await using (MySqlCommand query = new MySqlCommand(
-                         $"SELECT * FROM penalty_public WHERE userid = {userId} AND channel_id = {channelId} AND removed = false",
+                         $"SELECT (SELECT COUNT(*) FROM penalty_public WHERE userid = {userId} AND channel_id = {channelId} AND removed = false) AS public_penalties",
                          ZiYueBot.Instance.ConnectDatabase()))
         {
             await using MySqlDataReader reader = query.ExecuteReader();
             while (reader.Read())
             {
-                publicPenalty +=
-                    $"- 时间：{reader.GetDateTime("created_at"):yyyy年MM月dd日}，原因：{reader.GetString("reason")}\n";
-                publicPenaltyCount++;
+                publicPenaltyCount = reader.GetInt32("public_penalties");
             }
         }
 
-        publicPenalty = publicPenalty[..^1];
+        string publicPenalty = "\n";
+        if (publicPenaltyCount <= 50)
+        {
+            await using (MySqlCommand query = new MySqlCommand(
+                             $"SELECT * FROM penalty_public WHERE userid = {userId} AND channel_id = {channelId} AND removed = false",
+                             ZiYueBot.Instance.ConnectDatabase()))
+            {
+                await using MySqlDataReader reader = query.ExecuteReader();
+                while (reader.Read())
+                {
+                    publicPenalty +=
+                        $"- 时间：{reader.GetDateTime("created_at"):yyyy年MM月dd日}，原因：{reader.GetString("reason")}\n";
+                }
+            }
+
+            publicPenalty = publicPenalty[..^1];
+        }
 
         await context.SendMessage($"""
                                    {context.FetchUserName(userId).Result} ({userId}) 的记过数据统计：
                                    {(penaltyCount == 0 ? "该用户没有全局记过记录" : $"该用户共有全局记过 {penaltyCount} 条{penalty}")}
                                    {(publicPenaltyCount == 0 ? "该用户没有本群记过记录" : $"该用户共有本群记过 {publicPenaltyCount} 条{publicPenalty}")}
+                                   {(publicPenaltyCount > 50 ? "- 本群记过过多，请查看网页版完整数据。" : "")}
+                                   网页数据：https://www.ziyuebot.cn/public_penalty.php?id={userId}&expand={channelId}
                                    """);
     }
 

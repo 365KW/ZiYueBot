@@ -32,7 +32,7 @@ public class PublicPenalty : Command
 
         if (!context.HasChannelAdmin)
         {
-            await context.SendMessage("权限不足。");
+            await context.SendMessage("权限不足，需要管理权限。");
             return;
         }
 
