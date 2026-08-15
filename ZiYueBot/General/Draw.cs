@@ -72,6 +72,13 @@ public class Draw : Command
         _ = UpdateInvokeRecords(context.UserId);
 
         int rank = await JudgePrompt(arg.ToString(context));
+
+        if (rank < 30)
+        {
+            await context.SendMessage($"您的提示词评分为：{rank}/100，低于 30 分被拒绝绘画。");
+            return;
+        }
+
         await context.SendMessage($"您的提示词评分为：{rank}/100" + (rank < 60 ? "。你有使用 chat 优化吗？" : ""));
 
         try
