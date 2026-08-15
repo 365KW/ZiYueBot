@@ -28,8 +28,21 @@ public class ZiYueBot
 
     private Task? _eventTask;
 
+    private static void ConfigCreate()
+    {
+	    var config = new Config();
+	    Console.WriteLine("没有配置文件存在，已自动在程序目录生成配置骨架，请先写入配置。");
+		File.WriteAllText("config.json", JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true }));
+		Environment.Exit(0);
+    }
+
     private ZiYueBot()
     {
+	    if (!File.Exists("config.json"))
+	    {
+		    ConfigCreate();
+	    }
+
         using (FileStream stream = File.OpenRead("config.json"))
         {
             Config = JsonSerializer.Deserialize<Config>(stream);
