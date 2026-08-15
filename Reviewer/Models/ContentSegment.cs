@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace ZiYueReviewer.Models;
+namespace Reviewer.Models;
 
 /// <summary>图片在数据库中的存储形式。</summary>
 public enum ImageSourceKind

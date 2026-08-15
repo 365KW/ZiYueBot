@@ -1,9 +1,9 @@
 using System.IO;
 using System.Text.Json;
 using MySql.Data.MySqlClient;
-using ZiYueReviewer.Models;
+using Reviewer.Models;
 
-namespace ZiYueReviewer.Services;
+namespace Reviewer.Services;
 
 public class DatabaseService
 {
@@ -63,21 +63,21 @@ public class DatabaseService
     {
         var items = new List<BottleItem>();
 
-        await using MySqlConnection connection = OpenConnection();
+        await using var connection = OpenConnection();
         await using MySqlCommand command = new(sql, connection);
         if (paramName is not null)
         {
             command.Parameters.AddWithValue(paramName, paramValue);
         }
-        await using MySqlDataReader reader = (MySqlDataReader)await command.ExecuteReaderAsync(cancellationToken);
+        await using var reader = (MySqlDataReader)await command.ExecuteReaderAsync(cancellationToken);
 
         RowReader row = new(reader);
-        int contentIndex = reader.GetOrdinal("content");
+        var contentIndex = reader.GetOrdinal("content");
 
         while (await reader.ReadAsync(cancellationToken))
         {
-            string content = reader.IsDBNull(contentIndex) ? "" : reader.GetString(contentIndex);
-            BottleItem item = factory(row, content);
+            var content = reader.IsDBNull(contentIndex) ? "" : reader.GetString(contentIndex);
+            var item = factory(row, content);
             item.Segments.AddRange(ContentSegment.Parse(content));
             items.Add(item);
         }
@@ -130,15 +130,15 @@ public class DatabaseService
             connection))
         {
             command.Parameters.AddWithValue("@userId", userId);
-            await using MySqlDataReader reader = (MySqlDataReader)await command.ExecuteReaderAsync(cancellationToken);
-            int contentIndex = reader.GetOrdinal("content");
-            int remarkIndex = reader.GetOrdinal("remark");
+            await using var reader = (MySqlDataReader)await command.ExecuteReaderAsync(cancellationToken);
+            var contentIndex = reader.GetOrdinal("content");
+            var remarkIndex = reader.GetOrdinal("remark");
             while (await reader.ReadAsync(cancellationToken))
             {
-                string content = reader.IsDBNull(contentIndex) ? "" : reader.GetString(contentIndex);
-                string key = reader.GetDateTime("created").ToString("yyyy-MM-dd HH:mm:ss") + "|" + content;
+                var content = reader.IsDBNull(contentIndex) ? "" : reader.GetString(contentIndex);
+                var key = reader.GetDateTime("created").ToString("yyyy-MM-dd HH:mm:ss") + "|" + content;
 
-                string status = "pending";
+                var status = "pending";
                 string? assignedId = null;
                 if (reader.GetBoolean("reviewed"))
                 {

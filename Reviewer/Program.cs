@@ -1,14 +1,14 @@
 using System.IO;
-using ZiYueReviewer.Models;
-using ZiYueReviewer.Services;
+using Reviewer.Models;
+using Reviewer.Services;
 
-namespace ZiYueReviewer;
+namespace Reviewer;
 
 public class Program
 {
     public static async Task Main(string[] args)
     {
-        if (!DatabaseService.TryLoadConfig(out Models.DatabaseConfig config, out string error, out string baseDir))
+        if (!DatabaseService.TryLoadConfig(out var config, out var error, out var baseDir))
         {
             Console.WriteLine(error);
             return;
@@ -20,7 +20,7 @@ public class Program
         builder.Services.AddSingleton(config);
         builder.Services.AddSingleton<DatabaseService>();
 
-        WebApplication app = builder.Build();
+        var app = builder.Build();
 
         app.UseDefaultFiles();
         app.UseStaticFiles();
@@ -32,10 +32,7 @@ public class Program
             Results.Json(await db.GetPublishedAsync(ct)));
 
         app.MapGet("/api/queue", async (ulong? id, DatabaseService db, CancellationToken ct) =>
-        {
-            if (id is null) return Results.BadRequest("缺少 id 参数");
-            return Results.Json(await db.GetUserQueueAsync(id.Value, ct));
-        });
+            id is null ? Results.BadRequest("缺少 id 参数") : Results.Json(await db.GetUserQueueAsync(id.Value, ct)));
 
         app.MapGet("/api/review-records", async (DatabaseService db, CancellationToken ct) =>
             Results.Json(await db.GetAllReviewRecordsAsync(ct)));
@@ -55,18 +52,17 @@ public class Program
 
         app.MapGet("/queue", () => Results.File(Path.Combine(app.Environment.WebRootPath, "queue.html"), "text/html; charset=utf-8"));
 
-        app.MapGet("/api/file", async (string path, HttpContext ctx) =>
+        app.MapGet("/api/file", async (string path, HttpContext _) =>
         {
             try
             {
                 if (string.IsNullOrWhiteSpace(path)) return Results.NotFound();
 
-                string full = Path.IsPathFullyQualified(path)
+                var full = Path.IsPathFullyQualified(path)
                     ? path
                     : Path.GetFullPath(Path.Combine(baseDir, path));
 
-                if (!File.Exists(full)) return Results.NotFound();
-                return Results.File(await File.ReadAllBytesAsync(full));
+                return !File.Exists(full) ? Results.NotFound() : Results.File(await File.ReadAllBytesAsync(full));
             }
             catch
             {
@@ -74,7 +70,7 @@ public class Program
             }
         });
 
-        Console.WriteLine("子悦云瓶审核 WebUI：http://localhost:5177");
+        Console.WriteLine("云瓶审核 WebUI：http://localhost:5177");
         await app.RunAsync();
     }
 }

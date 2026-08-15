@@ -1,6 +1,6 @@
 using System.Data.Common;
 
-namespace ZiYueReviewer.Services;
+namespace Reviewer.Services;
 
 /// <summary>
 /// DbDataReader 包装，支持按列名取值（内部缓存列序号）。

@@ -1,4 +1,4 @@
-namespace ZiYueReviewer.Models;
+namespace Reviewer.Models;
 
 /// <summary>审核操作。</summary>
 public enum ReviewAction

@@ -1,4 +1,4 @@
-namespace ZiYueReviewer.Models;
+namespace Reviewer.Models;
 
 public class DatabaseConfig
 {
