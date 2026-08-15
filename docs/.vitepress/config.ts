@@ -56,8 +56,9 @@ export default defineConfig({
                         items: [
                             {text: '黑名单', link: '/technical/blacklists'},
                             {text: '愚人云瓶', link: '/technical/aprilbottles'},
-                            {text: '云瓶审核', link: '/technical/sensorship'},
+                            {text: '云瓶审核', link: '/technical/censorship'},
                             {text: '命令别名', link: '/technical/alias'},
+                            {text: '特权', link: '/technical/privilege'},
                             {
                                 text: '管理命令', link: '/technical/management/',
                                 collapsed: false,

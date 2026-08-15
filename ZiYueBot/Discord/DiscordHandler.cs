@@ -160,7 +160,7 @@ public static class DiscordHandler
         {
             SlashCommandBuilder builder = CommandHelper.EasyCommandBuilder(new FetchPenalty());
             SlashCommandOptionBuilder optionBuilder = new SlashCommandOptionBuilder();
-            optionBuilder.WithName("user").WithDescription("查询用户").WithRequired(true)
+            optionBuilder.WithName("user").WithDescription("查询用户").WithRequired(false)
                 .WithType(ApplicationCommandOptionType.User);
             builder.AddOption(optionBuilder);
             await CommandHelper.RegisterCommand(builder);

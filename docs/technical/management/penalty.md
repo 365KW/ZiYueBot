@@ -6,12 +6,12 @@
 
 **记过 (Penalty)** 是一个 [管理命令](/technical/management/index.md)，用于记录特定用户的违规记录。一般而言，行为尚未严重到需要加入 [黑名单](/technical/blacklists.md) 的用户，都会被记录在此。与黑名单不同，记过系统不附带任何的惩罚措施，仅作为“犯罪记录”使用。
 
-使用该命令需要 `CreatePenalty` 特权。
+使用该命令需要使用 [sudo](sudo.md) 提升 `CreatePenalty` 特权。
 
 ## 用法 {#usage}
 
 ```
-/记过 [user] [reason]
+/sudo 记过 [user] [reason]
 ```
 
 ## 参数 {#params}

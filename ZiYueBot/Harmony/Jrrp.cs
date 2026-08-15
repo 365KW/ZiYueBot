@@ -41,7 +41,7 @@ public class Jrrp : Command
     public override async Task Invoke(Context context, MessageChain arg)
     {
         Logger.Info($"调用者：{context.UserName} ({context.UserId})");
-        _ =UpdateInvokeRecords(context.UserId);
+        _ = UpdateInvokeRecords(context.UserId);
 
         if (DateTime.Today.Month == 4 && DateTime.Today.Day == 1) // 愚人节！
         {
