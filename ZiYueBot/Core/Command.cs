@@ -4,7 +4,7 @@ namespace ZiYueBot.Core;
 
 public abstract class Command
 {
-    public virtual Platform[] SupportedPlatform => [Platform.Discord, Platform.QQ];
+    public virtual Platform[] SupportedPlatform => [Platform.Discord, Platform.QQ, Platform.Console];
 
     /// <summary>
     /// 命令名。

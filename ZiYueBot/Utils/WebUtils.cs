@@ -15,10 +15,10 @@ public static class WebUtils
 {
     private static readonly ILog Logger = LogManager.GetLogger("网络");
     public static readonly HttpClient Client = new HttpClient();
-    private static readonly CosXmlServer Cos = new CosXmlServer(
+    private static readonly Lazy<CosXmlServer> Cos = new(() => new CosXmlServer(
         new CosXmlConfig.Builder().SetRegion(ZiYueBot.Instance.Config.AssetsUploadRegion).Build(),
         new DefaultQCloudCredentialProvider(ZiYueBot.Instance.Config.AssetsUploadSecretId,
-            ZiYueBot.Instance.Config.AssetsUploadSecretKey, 600));
+            ZiYueBot.Instance.Config.AssetsUploadSecretKey, 600)));
 
     /// <summary>
     /// 下载指定文件。
@@ -62,7 +62,11 @@ public static class WebUtils
     
     public static string StoreImage(ImageMessageEntity image)
     {
-        return ZiYueBot.Instance.Config.AssetsUploadEnabled ?? true
+        bool uploadEnabled = (ZiYueBot.Instance.Config.AssetsUploadEnabled ?? true)
+            && !string.IsNullOrEmpty(ZiYueBot.Instance.Config.AssetsUploadRegion)
+            && !string.IsNullOrEmpty(ZiYueBot.Instance.Config.AssetsUploadSecretId)
+            && !string.IsNullOrEmpty(ZiYueBot.Instance.Config.AssetsUploadSecretKey);
+        return uploadEnabled
             ? $"\uE000{UploadToS3(image)}\uE001"
             : $"\u2408{SaveLocalImage(image)}\u2409";
     }
@@ -111,7 +115,7 @@ public static class WebUtils
         string key = $"images/{DateTime.Today:yyyy-MM}/{Guid.NewGuid()}.{type}";
         Logger.Info($"对象存储文件上传：{key}");
         PutObjectRequest request = new PutObjectRequest(ZiYueBot.Instance.Config.AssetsUploadBucket, key, data.AsStream());
-        Cos.PutObject(request);
+        Cos.Value.PutObject(request);
         return $"{ZiYueBot.Instance.Config.AssetsEndpoint}/{key}";
     }
 }

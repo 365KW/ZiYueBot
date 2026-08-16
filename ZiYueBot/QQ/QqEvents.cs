@@ -20,7 +20,7 @@ public static class QqEvents
         {
             try
             {
-                StringBuilder builder = new StringBuilder();
+                var builder = new StringBuilder();
                 WebSocketReceiveResult result;
                 do
                 {
@@ -30,17 +30,17 @@ public static class QqEvents
                     builder.Append(chunk);
                 } while (!result.EndOfMessage);
 
-                JsonNode? message = JsonNode.Parse(builder.ToString());
-                uint userId = message!["user_id"]!.GetValue<uint>();
+                var message = JsonNode.Parse(builder.ToString());
+                var userId = message!["user_id"]!.GetValue<uint>();
 
                 // 检查云瓶星标
                 if (message["notice_type"]?.ToString() == "group_msg_emoji_like" &&
                     message["sub_type"]!.GetValue<string>() == "add")
                 {
-                    string emoji = message["likes"]![0]!["emoji_id"]!.ToString();
+                    var emoji = message["likes"]![0]!["emoji_id"]!.ToString();
                     if (emoji is "128077" or "76")
                     {
-                        JsonNode response = await QqContext.SendApiRequest(new JsonObject
+                        var response = await QqContext.SendApiRequest(new JsonObject
                         {
                             ["action"] = "get_msg",
                             ["params"] = new JsonObject
@@ -48,15 +48,15 @@ public static class QqEvents
                                 ["message_id"] = message["message_id"]!.GetValue<long>().ToString()
                             }
                         });
-                        MessageChain chain = Parser.ParseMessage(response["data"]!["message"]!, out _);
-                        ulong authorUserId = response["data"]!["user_id"]!.GetValue<ulong>();
-                        QqContext context = new QqContext(EventType.GroupMessage, "", userId,
+                        var chain = Parser.ParseMessage(response["data"]!["message"]!, out _);
+                        var authorUserId = response["data"]!["user_id"]!.GetValue<ulong>();
+                        var context = new QqContext(EventType.GroupMessage, "", userId,
                             response["data"]!["group_id"]!.GetValue<uint>());
                         if (authorUserId != ZiYueBot.Instance.QqUserId) continue;
-                        Match match = Stargazers.StargazerRegex().Match(chain.ToString().FirstLine());
+                        var match = Stargazers.StargazerRegex().Match(chain.ToString().FirstLine());
                         if (match.Success)
                         {
-                            string stargazer = Stargazers.AddStargazer(userId,
+                            var stargazer = Stargazers.AddStargazer(userId,
                                 await context.FetchUserName(userId),
                                 int.Parse(match.Groups[1].Value), true);
                             if (!string.IsNullOrEmpty(stargazer)) await context.SendMessage(stargazer);
@@ -73,7 +73,7 @@ public static class QqEvents
                 {
                     case "private":
                     {
-                        QqContext context = new QqContext(EventType.DirectMessage,
+                        var context = new QqContext(EventType.DirectMessage,
                             message["sender"]!["nickname"]!.GetValue<string>(), userId,
                             message["user_id"]!.GetValue<uint>());
                         _ = EventHandler(context, message["message"]!);
@@ -81,7 +81,7 @@ public static class QqEvents
                     }
                     case "group":
                     {
-                        QqContext context = new QqContext(EventType.GroupMessage,
+                        var context = new QqContext(EventType.GroupMessage,
                             message["sender"]!["nickname"]!.GetValue<string>(), userId,
                             message["group_id"]!.GetValue<uint>());
                         _ = EventHandler(context, message["message"]!);

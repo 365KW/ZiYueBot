@@ -39,7 +39,7 @@ public class Stat : Command
         await using (MySqlCommand query = new MySqlCommand($"""
                                                             SELECT (SELECT COUNT(*) FROM driftbottles WHERE userid = {context.UserId})                AS bottle_counts,
                                                                    (SELECT COALESCE(SUM(views), 0) FROM driftbottles WHERE userid = {context.UserId}) AS total_views,
-                                                                   (SELECT MAX(id) FROM driftbottles)                                         AS last_bottle_id
+                                                                   (SELECT COALESCE(MAX(id), 0) FROM driftbottles)                                         AS last_bottle_id
                                                             """,
                          ZiYueBot.Instance.ConnectDatabase()))
         {
@@ -47,7 +47,8 @@ public class Stat : Command
             if (reader.Read())
             {
                 int bottleCounts = reader.GetInt32("bottle_counts");
-                double percent = (double)bottleCounts / reader.GetInt32("last_bottle_id") * 100;
+                int lastBottleId = reader.GetInt32("last_bottle_id");
+                double percent = lastBottleId > 0 ? (double)bottleCounts / lastBottleId * 100 : 0;
                 driftbottlesStat =
                     $"您共扔出了 {bottleCounts} 支云瓶，占全部云瓶的 {percent:F4}%，总浏览量 {reader.GetInt32("total_views")} 次。";
             }
@@ -67,7 +68,7 @@ public class Stat : Command
             {
                 int userNewBottles = reader.GetInt32("your_new_bottles");
                 int totalNewBottles = reader.GetInt32("new_bottles");
-                double percent = (double)userNewBottles / totalNewBottles * 100;
+                double percent = totalNewBottles > 0 ? (double)userNewBottles / totalNewBottles * 100 : 0;
                 driftbottlesIncrementalStat =
                     $"最近七天内增加了 {totalNewBottles} 支云瓶，由您扔出的有 {userNewBottles} 支，占总增长的 {percent:F4}%。";
             }

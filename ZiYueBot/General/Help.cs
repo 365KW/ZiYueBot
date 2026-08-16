@@ -19,7 +19,7 @@ public class Help : Command
                                           在线文档：https://docs.ziyuebot.cn/general/help
                                           """;
 
-    public override Platform[] SupportedPlatform => [Platform.Discord, Platform.QQ];
+    public override Platform[] SupportedPlatform => [Platform.Discord, Platform.QQ,Platform.Console];
 
     public override async Task Invoke(Context context, MessageChain arg)
     {

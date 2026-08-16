@@ -13,15 +13,16 @@ public static class RateLimit
     /// <returns>是否成功通过</returns>
     public static bool TryPassRateLimit(this Command command, Context context)
     {
-        return TryPassRateLimit(command.Id, context.UserId, command.GetRateLimit(context));
+        return TryPassRateLimit(command.Id, context.UserId, command.GetRateLimit(context),
+            context.Platform == Platform.Console);
     }
 
     /// <summary>
     /// 仅通过用户 ID 尝试通过频率限制。这一函数会绕过命令设置的频率限制。
     /// </summary>
-    public static bool TryPassRateLimit(string key, ulong userId, TimeSpan rateLimit)
+    public static bool TryPassRateLimit(string key, ulong userId, TimeSpan rateLimit, bool bypass = false)
     {
-        if (Privileged.HasPrivilege(userId, Privilege.BypassRateLimit)) return true;
+        if (bypass || Privileged.HasPrivilege(userId, Privilege.BypassRateLimit)) return true;
         DateTime last = LastInvoke.GetValueOrDefault((key, userId), DateTime.MinValue);
         DateTime now = DateTime.UtcNow;
         if (now - last < rateLimit) return false;

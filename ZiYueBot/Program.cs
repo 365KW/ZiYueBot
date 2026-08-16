@@ -30,6 +30,7 @@ internal static class Program
         try
         {
             await bot.StartAsync();
+            _ = Task.Run(ShellUse.ShellRun.Run);
             await bot.WaitAsync();
         }
         catch (Exception e)

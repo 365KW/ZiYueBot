@@ -29,7 +29,7 @@ public class Sudo : Command
             return;
         }
 
-        if (!Privileged.HasPrivilege(context.UserId, privilegeCommand.ExpectingPrivileges))
+        if (context.Platform != Platform.Console && !Privileged.HasPrivilege(context.UserId, privilegeCommand.ExpectingPrivileges))
         {
             _ = WriteLog(context.UserId, arg.Flatten(), Result.Failed);
             await context.SendMessage($"权限不足，需要 {privilegeCommand.ExpectingPrivileges:F} 特权。");
@@ -37,7 +37,19 @@ public class Sudo : Command
         }
 
         MessageChain argChain = [];
-        if (split.Length > 1 && !string.IsNullOrEmpty(split[1])) argChain.Add(new TextMessageEntity(split[1]));
+        if (split.Length > 1 && !string.IsNullOrEmpty(split[1]))
+        {
+            string[] subArgs = split[1].Split(' ', 2);
+            if (context.Platform == Platform.Console && ulong.TryParse(subArgs[0], out ulong targetUserId))
+            {
+                argChain.Add(new PingMessageEntity(targetUserId));
+                if (subArgs.Length > 1) argChain.Add(new TextMessageEntity(subArgs[1]));
+            }
+            else
+            {
+                argChain.Add(new TextMessageEntity(split[1]));
+            }
+        }
         if (arg.Count > 1) argChain.AddRange(arg[1..]);
         _ = WriteLog(context.UserId, arg.Flatten(), Result.Success);
         await privilegeCommand.PrivilegedInvoke(context, argChain);

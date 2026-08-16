@@ -23,8 +23,8 @@ public static class Commands
 
     public static Command? GetCommand(Platform platform, string name)
     {
-        if (!RegisteredCommands.TryGetValue(name, out Command? value)) return null;
-        Platform[] supportedPlatform = value.SupportedPlatform;
+        if (!RegisteredCommands.TryGetValue(name, out var value)) return null;
+        var supportedPlatform = value.SupportedPlatform;
         return supportedPlatform.Contains(platform) || supportedPlatform.Contains(Platform.Management)
             ? value : null;
     }

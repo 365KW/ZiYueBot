@@ -46,9 +46,12 @@ public class PublicPenalty : Command
         _ = UpdateInvokeRecords(context.UserId);
 
         ulong targetUserId = ping.UserId;
-        ulong channelId = context.Platform == Platform.QQ
-            ? ((QqContext)context).SourceUni
-            : ((DiscordContext)context).Socket.GuildId!.Value;
+        ulong channelId = context.Platform switch
+        {
+            Platform.QQ => ((QqContext)context).SourceUni,
+            Platform.Discord => ((DiscordContext)context).Socket.GuildId!.Value,
+            _ => 0
+        };
         arg.RemoveAt(0);
         string reason = arg.ToString(context).Trim();
         await using MySqlCommand command =

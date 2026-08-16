@@ -117,9 +117,12 @@ public class Win : Command
 
         Logger.Info($"调用者：{context.UserName} ({context.UserId})");
 
-        ulong guildId = context.Platform == Platform.Discord
-            ? (ulong)((DiscordContext)context).Socket.GuildId!
-            : ((QqContext)context).SourceUni;
+        ulong guildId = context switch
+        {
+            DiscordContext discord => (ulong)discord.Socket.GuildId!,
+            QqContext qq => qq.SourceUni,
+            _ => 0
+        };
 
         await GeneralWin(context, guildId);
         await TryCommonProsperity(context, guildId);

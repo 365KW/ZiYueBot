@@ -31,11 +31,14 @@ public class RestartRevolver : Command
             return;
         }
 
-        ulong channelId;
-        if (context is DiscordContext discord) channelId = (ulong)discord.Socket.ChannelId!;
-        else channelId = ((QqContext)context).SourceUni;
+        ulong channelId = context switch
+        {
+            DiscordContext discord => (ulong)discord.Socket.ChannelId!,
+            QqContext qq => qq.SourceUni,
+            _ => 0
+        };
 
-        if (!RateLimit.TryPassRateLimit(Id, channelId, TimeSpan.FromSeconds(10)))
+        if (!RateLimit.TryPassRateLimit(Id, channelId, TimeSpan.FromSeconds(10), context.Platform == Platform.Console))
         {
             await context.SendMessage("频率已达限制（整个群聊内 10 秒 1 条）");
             return;

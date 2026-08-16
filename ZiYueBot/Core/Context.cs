@@ -9,6 +9,7 @@ public enum Platform
 {
     QQ,
     Discord,
+    Console,
 
     /// <summary>
     /// 管理类命令。与一般的命令不同，它不能在 /help 显示，并且全平台通用。

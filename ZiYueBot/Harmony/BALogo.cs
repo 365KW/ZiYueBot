@@ -10,6 +10,7 @@ public class BaLogo : Command
     private static readonly double OffsetX = 250 / Math.Tan(double.DegreesToRadians(60));
     private static readonly SKTypeface Face = SKTypeface.FromFile("resources/BlueArchive.ttf");
     private static readonly SKFont Font = new SKFont(Face, 84);
+    public override Platform[] SupportedPlatform => [Platform.Discord, Platform.QQ];
 
     public override string Id => "balogo";
 
