@@ -1,1 +1,0 @@
-import{M as e,U as t,W as n,it as r}from"./chunks/framework.D_8Ll7sl.js";var i=JSON.parse(`{"title":"用户协议","description":"","frontmatter":{},"headers":[],"relativePath":"tos.md","filePath":"tos.md","lastUpdated":1786873544000}`),a={name:`tos.md`};function o(e,i,a,o,s,c){return r(),t(`div`,null,[...i[0]||=[n("",16)]])}var s=e(a,[[`render`,o]]);export{i as __pageData,s as default};
