@@ -1,8 +1,11 @@
 import {defineConfig, type DefaultTheme} from 'vitepress'
 import tabsPlugin from '@red-asuka/vitepress-plugin-tabs'
 
+const base = process.env.VITE_PRESS_BASE ?? '/'
+
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
+    base: base,
     lang: 'zh-CN',
     title: "子悦机器",
     description: "子悦机器 (ZiYue Bot) 是一个由 子悦解说 开发的，用 C# 编写的 QQ 和 Discord 机器人。",
@@ -25,7 +28,7 @@ export default defineConfig({
                              g.async=true; g.src=u+'matomo.js'; s.parentNode.insertBefore(g,s);
                            })();`
         ],
-        ['link', {rel: 'icon', href: '/logo.png'}]
+        ['link', {rel: 'icon', href: `${base}logo.png`}]
     ],
     cleanUrls: true,
     themeConfig: {

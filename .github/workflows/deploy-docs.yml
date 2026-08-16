@@ -27,8 +27,10 @@ jobs:
     - name: Build docs
       run: npm run docs:build
       working-directory: docs
+      env:
+        VITE_PRESS_BASE: '/ZiYueBot/'
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v4
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: docs/dist
+        publish_dir: docs/.vitepress/dist
